@@ -432,8 +432,15 @@
   <section class="view" id="view-rekap">
     <div class="section-head">
       <h2>Rekap <em>Pemesan</em></h2>
-      <span class="sub">Diurutkan dari belanja terbesar</span>
+      <span class="sub">Diurutkan dari belanja terbesar · termasuk data yang sudah diarsipkan</span>
     </div>
+    <div class="filter-bar">
+      <div class="field"><label>Dari Tanggal</label><input type="date" id="rekapFilterTanggalDari"></div>
+      <div class="field"><label>Sampai Tanggal</label><input type="date" id="rekapFilterTanggalSampai"></div>
+      <div class="field" style="grid-column:span 2;"><label>Pemesan</label><input type="text" id="rekapFilterPemesan" placeholder="Cari nama pemesan..."></div>
+      <button type="button" class="btn ghost" id="rekapFilterResetBtn">Reset Filter</button>
+    </div>
+    <div class="filter-info" id="rekapFilterInfo"></div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>#</th><th>Pemesan</th><th class="num">Jumlah Order</th><th class="num">Total Belanja</th></tr></thead>
@@ -446,7 +453,7 @@
   <section class="view" id="view-rekaptanggal">
     <div class="section-head">
       <h2>Rekap <em>Tanggal</em></h2>
-      <span class="sub">Diurutkan dari tanggal terbaru · klik baris untuk lihat detail</span>
+      <span class="sub">Diurutkan dari tanggal terbaru · termasuk data arsip · klik baris untuk lihat detail</span>
     </div>
     <div class="table-wrap">
       <table>
@@ -460,7 +467,7 @@
   <section class="view" id="view-arsip">
     <div class="section-head">
       <h2>Arsip <em>Data</em></h2>
-      <span class="sub">Ringkasan pesanan yang sudah diarsipkan · klik baris untuk lihat rincian harian</span>
+      <span class="sub">Ringkasan pesanan yang sudah diarsipkan · klik baris untuk lihat rincian pesanan lengkap</span>
     </div>
     <div class="table-wrap">
       <table>
@@ -552,7 +559,10 @@
     </div>
     <div class="modal-body">
       <table>
-        <thead><tr><th>Tanggal</th><th class="num">Jumlah Order</th><th class="num">Total Belanja</th></tr></thead>
+        <thead><tr>
+          <th>Tanggal</th><th>Pemesan</th><th>Jenis</th><th>Item</th>
+          <th class="num">Jumlah</th><th class="num">Harga</th><th class="num">Total</th><th>Status</th>
+        </tr></thead>
         <tbody id="arsipModalRows"></tbody>
       </table>
     </div>
@@ -626,7 +636,7 @@
 
   function rowsToItem(r){ return { id:r.id, nama:r.nama, kategori:r.kategori, hargaA:Number(r.harga_a), maxA:Number(r.max_a), hargaN:Number(r.harga_n), maxN:Number(r.max_n), stok:Number(r.stok) }; }
   function rowsToOrder(r){ return { id:r.id, _seq: r.seq, tanggal:r.tanggal, pemesan:r.pemesan, jenis:r.jenis, itemId:r.item_id, jumlah:Number(r.jumlah), harga:Number(r.harga), total:Number(r.total), status:r.status }; }
-  function rowsToArchive(r){ return { id:r.id, tanggalDari:r.tanggal_dari, tanggalSampai:r.tanggal_sampai, jumlahOrder:Number(r.jumlah_order), totalBelanja:Number(r.total_belanja), detailHarian: (r.detail_harian||[]), dibuatPada:r.dibuat_pada }; }
+  function rowsToArchive(r){ return { id:r.id, tanggalDari:r.tanggal_dari, tanggalSampai:r.tanggal_sampai, jumlahOrder:Number(r.jumlah_order), totalBelanja:Number(r.total_belanja), detailHarian: (r.detail_harian||[]), detailPesanan: (r.detail_pesanan||[]), dibuatPada:r.dibuat_pada }; }
 
   // ---------- Storage (Supabase) ----------
   async function loadAll(){
@@ -690,7 +700,7 @@
   async function dbInsertArchive(a){
     const { error } = await sb.from('archive').insert([{
       id:a.id, tanggal_dari:a.tanggalDari, tanggal_sampai:a.tanggalSampai,
-      jumlah_order:a.jumlahOrder, total_belanja:a.totalBelanja, detail_harian:a.detailHarian
+      jumlah_order:a.jumlahOrder, total_belanja:a.totalBelanja, detail_harian:a.detailHarian, detail_pesanan:a.detailPesanan
     }]);
     if(error) console.error('insert archive failed', error);
     return error;
@@ -848,10 +858,39 @@
     document.getElementById('itemCount').textContent = state.items.length + ' item';
   }
 
-  // ---------- Render: Rekap ----------
+  // ---------- Combined records (live orders + archived snapshots) ----------
+  function getCombinedRecords(){
+    const live = state.orders.map(o=>{
+      const item = itemById(o.itemId);
+      return { tanggal:o.tanggal, pemesan:o.pemesan, jenis:o.jenis, itemNama: item ? item.nama : '(dihapus)', jumlah:o.jumlah, harga:o.harga, total:o.total, status:o.status, _seq:o._seq||0 };
+    });
+    const archived = [];
+    state.archives.forEach(a=>{
+      (a.detailPesanan||[]).forEach(o=>{
+        archived.push({ tanggal:o.tanggal, pemesan:o.pemesan, jenis:o.jenis, itemNama:o.itemNama, jumlah:o.jumlah, harga:o.harga, total:o.total, status:o.status, _seq:0 });
+      });
+    });
+    return live.concat(archived);
+  }
+
+  let rekapFilters = { tanggalDari:'', tanggalSampai:'', pemesan:'' };
+  function applyRekapFilters(records){
+    return records.filter(r=>{
+      if(rekapFilters.tanggalDari && (r.tanggal||'') < rekapFilters.tanggalDari) return false;
+      if(rekapFilters.tanggalSampai && (r.tanggal||'') > rekapFilters.tanggalSampai) return false;
+      if(rekapFilters.pemesan && !(r.pemesan||'').toLowerCase().includes(rekapFilters.pemesan.toLowerCase())) return false;
+      return true;
+    });
+  }
+  function isRekapFilterActive(){
+    return !!(rekapFilters.tanggalDari || rekapFilters.tanggalSampai || rekapFilters.pemesan);
+  }
+
+  // ---------- Render: Rekap Pemesan ----------
   function renderRekap(){
+    const filtered = applyRekapFilters(getCombinedRecords());
     const map = {};
-    state.orders.forEach(o=>{
+    filtered.forEach(o=>{
       if(!map[o.pemesan]) map[o.pemesan] = { total:0, count:0 };
       map[o.pemesan].total += o.total;
       map[o.pemesan].count += 1;
@@ -859,7 +898,7 @@
     const rows = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
     const tbody = document.getElementById('rekapRows');
     if(!rows.length){
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Belum ada data pemesan.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Tidak ada data pemesan yang cocok.</td></tr>';
     } else {
       tbody.innerHTML = rows.map(([name, v], idx)=>`<tr data-pemesan="${encodeURIComponent(name)}">
         <td class="num">${idx+1}</td>
@@ -868,23 +907,25 @@
         <td class="num">${rupiah(v.total)}</td>
       </tr>`).join('');
     }
+    const infoEl = document.getElementById('rekapFilterInfo');
+    infoEl.textContent = isRekapFilterActive() ? `Menampilkan ${rows.length} pemesan dari ${filtered.length} transaksi (filter aktif, termasuk arsip)` : '';
   }
 
   // ---------- Rekap detail modal ----------
   function openRekapDetail(name){
-    const orders = state.orders.filter(o=>o.pemesan===name).slice().sort((a,b)=> (b.tanggal||'').localeCompare(a.tanggal||'') || b._seq-a._seq);
-    const total = orders.reduce((s,o)=>s+o.total,0);
+    const records = applyRekapFilters(getCombinedRecords()).filter(o=>o.pemesan===name)
+      .slice().sort((a,b)=> (b.tanggal||'').localeCompare(a.tanggal||'') || (b._seq||0)-(a._seq||0));
+    const total = records.reduce((s,o)=>s+o.total,0);
     document.getElementById('rekapModalName').textContent = name;
-    document.getElementById('rekapModalCount').textContent = orders.length;
+    document.getElementById('rekapModalCount').textContent = records.length;
     document.getElementById('rekapModalTotal').textContent = rupiah(total);
     const tbody = document.getElementById('rekapModalRows');
-    tbody.innerHTML = orders.length ? orders.map(o=>{
-      const item = itemById(o.itemId);
+    tbody.innerHTML = records.length ? records.map(o=>{
       const badgeClass = o.status === 'OK' ? 'ok' : 'bad';
       return `<tr>
         <td>${fmtDateShort(o.tanggal)}</td>
         <td>${o.jenis}</td>
-        <td>${item ? item.nama : '(dihapus)'}</td>
+        <td>${o.itemNama || '-'}</td>
         <td class="num">${o.jumlah}</td>
         <td class="num">${rupiah(o.harga)}</td>
         <td class="num">${rupiah(o.total)}</td>
@@ -909,10 +950,23 @@
     if(e.key === 'Escape') closeRekapDetail();
   });
 
+  // ---------- Rekap Pemesan filter wiring ----------
+  document.getElementById('rekapFilterTanggalDari').addEventListener('input', (e)=>{ rekapFilters.tanggalDari = e.target.value; renderRekap(); });
+  document.getElementById('rekapFilterTanggalSampai').addEventListener('input', (e)=>{ rekapFilters.tanggalSampai = e.target.value; renderRekap(); });
+  document.getElementById('rekapFilterPemesan').addEventListener('input', (e)=>{ rekapFilters.pemesan = e.target.value.trim(); renderRekap(); });
+  document.getElementById('rekapFilterResetBtn').addEventListener('click', ()=>{
+    rekapFilters = { tanggalDari:'', tanggalSampai:'', pemesan:'' };
+    document.getElementById('rekapFilterTanggalDari').value = '';
+    document.getElementById('rekapFilterTanggalSampai').value = '';
+    document.getElementById('rekapFilterPemesan').value = '';
+    renderRekap();
+  });
+
   // ---------- Render: Rekap Tanggal ----------
   function renderRekapTanggal(){
+    const all = getCombinedRecords();
     const map = {};
-    state.orders.forEach(o=>{
+    all.forEach(o=>{
       const k = o.tanggal || '-';
       if(!map[k]) map[k] = { total:0, count:0 };
       map[k].total += o.total;
@@ -931,19 +985,18 @@
     }
   }
   function openTanggalDetail(tgl){
-    const orders = state.orders.filter(o=>(o.tanggal||'-')===tgl).slice().sort((a,b)=>b._seq-a._seq);
-    const total = orders.reduce((s,o)=>s+o.total,0);
+    const records = getCombinedRecords().filter(o=>(o.tanggal||'-')===tgl).slice().sort((a,b)=>(b._seq||0)-(a._seq||0));
+    const total = records.reduce((s,o)=>s+o.total,0);
     document.getElementById('rekapModalName').textContent = fmtDateShort(tgl);
-    document.getElementById('rekapModalCount').textContent = orders.length;
+    document.getElementById('rekapModalCount').textContent = records.length;
     document.getElementById('rekapModalTotal').textContent = rupiah(total);
     const tbody = document.getElementById('rekapModalRows');
-    tbody.innerHTML = orders.length ? orders.map(o=>{
-      const item = itemById(o.itemId);
+    tbody.innerHTML = records.length ? records.map(o=>{
       const badgeClass = o.status === 'OK' ? 'ok' : 'bad';
       return `<tr>
         <td>${fmtDateShort(o.tanggal)}</td>
         <td>${o.jenis}</td>
-        <td>${item ? item.nama : '(dihapus)'}</td>
+        <td>${o.itemNama || '-'}</td>
         <td class="num">${o.jumlah}</td>
         <td class="num">${rupiah(o.harga)}</td>
         <td class="num">${rupiah(o.total)}</td>
@@ -979,13 +1032,21 @@
     document.getElementById('arsipModalPeriode').textContent = `${fmtDateShort(a.tanggalDari)} — ${fmtDateShort(a.tanggalSampai)}`;
     document.getElementById('arsipModalCount').textContent = a.jumlahOrder;
     document.getElementById('arsipModalTotal').textContent = rupiah(a.totalBelanja);
-    const detail = (a.detailHarian||[]).slice().sort((x,y)=>(y.tanggal||'').localeCompare(x.tanggal||''));
+    const detail = (a.detailPesanan||[]).slice().sort((x,y)=> (y.tanggal||'').localeCompare(x.tanggal||''));
     const tbody = document.getElementById('arsipModalRows');
-    tbody.innerHTML = detail.length ? detail.map(d=>`<tr>
-      <td>${fmtDateShort(d.tanggal)}</td>
-      <td class="num">${d.jumlah}</td>
-      <td class="num">${rupiah(d.total)}</td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="3">Tidak ada rincian.</td></tr>';
+    tbody.innerHTML = detail.length ? detail.map(o=>{
+      const badgeClass = o.status === 'OK' ? 'ok' : 'bad';
+      return `<tr>
+        <td>${fmtDateShort(o.tanggal)}</td>
+        <td>${o.pemesan}</td>
+        <td>${o.jenis}</td>
+        <td>${o.itemNama || '-'}</td>
+        <td class="num">${o.jumlah}</td>
+        <td class="num">${rupiah(o.harga)}</td>
+        <td class="num">${rupiah(o.total)}</td>
+        <td><span class="badge ${badgeClass}">${o.status}</span></td>
+      </tr>`;
+    }).join('') : '<tr class="empty-row"><td colspan="8">Tidak ada rincian pesanan tersimpan untuk arsip ini.</td></tr>';
     document.getElementById('arsipModalOverlay').classList.add('show');
   }
   function closeArsipDetail(){
@@ -1025,9 +1086,19 @@
     const toArchive = ordersToArchiveBefore(cutoff);
     if(!toArchive.length){ toast('Tidak ada pesanan untuk diarsipkan.'); return; }
     const total = toArchive.reduce((s,o)=>s+o.total,0);
-    if(!confirm(`Arsipkan ${toArchive.length} pesanan sebelum ${fmtDateShort(cutoff)} senilai ${rupiah(total)}? Baris detail akan dihapus dari Buku Pesanan, hanya ringkasan harian yang disimpan di Arsip. Stok TIDAK dikembalikan.`)) return;
+    if(!confirm(`Arsipkan ${toArchive.length} pesanan sebelum ${fmtDateShort(cutoff)} senilai ${rupiah(total)}? Baris detail akan dihapus dari Buku Pesanan, tapi rincian lengkapnya tetap bisa dicek di tab Arsip. Stok TIDAK dikembalikan.`)) return;
 
-    // group into daily breakdown
+    // snapshot full order-level detail (item name resolved now, in case item is deleted later)
+    const detailPesanan = toArchive.slice().sort((a,b)=> (a.tanggal||'').localeCompare(b.tanggal||'') || a._seq-b._seq).map(o=>{
+      const item = itemById(o.itemId);
+      return {
+        tanggal:o.tanggal, pemesan:o.pemesan, jenis:o.jenis,
+        itemNama: item ? item.nama : '(dihapus)',
+        jumlah:o.jumlah, harga:o.harga, total:o.total, status:o.status
+      };
+    });
+
+    // group into daily breakdown (kept for quick summaries)
     const dayMap = {};
     toArchive.forEach(o=>{
       const k = o.tanggal || '-';
@@ -1044,7 +1115,8 @@
       tanggalDari, tanggalSampai,
       jumlahOrder: toArchive.length,
       totalBelanja: total,
-      detailHarian
+      detailHarian,
+      detailPesanan
     };
 
     const err = await dbInsertArchive(archiveRecord);
