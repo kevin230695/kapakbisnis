@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAPAK — MANIFEST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg: #14161a;
+    --bg-alt: #0f1013;
+    --panel: #1b1e23;
+    --panel-2: #20242a;
+    --border: #2b2f36;
+    --border-hi: #3a3f47;
+    --brass: #d99b3f;
+    --brass-dim: #8a6329;
+    --red: #d9564a;
+    --green: #4f9d6e;
+    --text: #ece7dc;
+    --text-dim: #9a9ea6;
+    --text-faint: #5d6169;
+    --display: 'Oswald', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --body: 'Inter', sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:
+      radial-gradient(circle at 15% 0%, #1a1d23 0%, var(--bg) 45%);
+    color:var(--text); font-family:var(--body);
+    min-height:100vh;
+  }
+  ::selection{ background:var(--brass); color:#14161a; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg, #17191e, #14161a);
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand-mark{
+    width:38px; height:38px; border:2px solid var(--brass);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--display); font-weight:700; color:var(--brass);
+    transform:rotate(45deg); font-size:14px; flex-shrink:0;
+  }
+  .brand-mark span{ transform:rotate(-45deg); }
+  .brand-text h1{
+    font-family:var(--display); font-size:18px; letter-spacing:2px;
+    margin:0; color:var(--text); text-transform:uppercase;
+  }
+  .brand-text p{
+    margin:1px 0 0; font-size:10.5px; letter-spacing:3px; color:var(--brass);
+    text-transform:uppercase; font-family:var(--mono);
+  }
+  .topbar-right{ display:flex; align-items:center; gap:16px; }
+  .clock{
+    font-family:var(--mono); font-size:12px; color:var(--text-dim);
+    text-align:right; line-height:1.4;
+  }
+  .clock b{ color:var(--text); display:block; font-size:13px; }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; gap:2px; padding:0 22px; background:var(--bg-alt);
+    border-bottom:1px solid var(--border); overflow-x:auto;
+  }
+  .tab-btn{
+    background:none; border:none; color:var(--text-faint);
+    font-family:var(--display); letter-spacing:1.5px; font-size:12.5px;
+    text-transform:uppercase; padding:13px 18px; cursor:pointer;
+    border-bottom:2px solid transparent; white-space:nowrap;
+    transition:color .15s, border-color .15s;
+  }
+  .tab-btn:hover{ color:var(--text); }
+  .tab-btn.active{ color:var(--brass); border-bottom-color:var(--brass); }
+
+  main{ padding:24px; max-width:1280px; margin:0 auto; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fade .25s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;}
+  .section-head h2{
+    font-family:var(--display); text-transform:uppercase; letter-spacing:2px;
+    font-size:20px; margin:0; color:var(--text);
+  }
+  .section-head h2 em{ color:var(--brass); font-style:normal; }
+  .section-head .sub{ font-size:12px; color:var(--text-faint); font-family:var(--mono); }
+
+  /* ---------- Dashboard ---------- */
+  .kpi-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:22px; }
+  .kpi-card{
+    background:var(--panel); border:1px solid var(--border); padding:16px 18px;
+    position:relative; overflow:hidden;
+  }
+  .kpi-card::before{
+    content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--brass);
+  }
+  .kpi-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:2px; color:var(--text-faint); text-transform:uppercase; }
+  .kpi-value{ font-family:var(--display); font-size:26px; color:var(--text); margin-top:6px; }
+  .kpi-value.brass{ color:var(--brass); }
+
+  .dash-grid{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+  @media(max-width:900px){ .dash-grid{ grid-template-columns:1fr; } .kpi-grid{ grid-template-columns:repeat(2,1fr);} }
+
+  .panel{ background:var(--panel); border:1px solid var(--border); padding:18px; }
+  .panel h3{
+    font-family:var(--display); text-transform:uppercase; font-size:13.5px; letter-spacing:1.5px;
+    color:var(--text-dim); margin:0 0 14px; padding-bottom:10px; border-bottom:1px solid var(--border);
+  }
+  .target-bar-wrap{ margin-top:4px; }
+  .target-bar{ height:10px; background:var(--bg-alt); border:1px solid var(--border); overflow:hidden; }
+  .target-bar-fill{ height:100%; background:linear-gradient(90deg, var(--brass-dim), var(--brass)); transition:width .4s; }
+  .target-meta{ display:flex; justify-content:space-between; margin-top:8px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+
+  .mini-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .mini-row:last-child{ border-bottom:none; }
+  .mini-row .name{ color:var(--text); }
+  .mini-row .val{ font-family:var(--mono); color:var(--brass); }
+  .rank{ font-family:var(--mono); color:var(--text-faint); margin-right:8px; font-size:11px; }
+
+  /* ---------- Buttons / inputs ---------- */
+  .btn{
+    font-family:var(--display); letter-spacing:1px; text-transform:uppercase; font-size:12px;
+    background:var(--brass); color:#14161a; border:none; padding:10px 16px; cursor:pointer;
+    transition:background .15s, transform .1s;
+  }
+  .btn:hover{ background:#e8ab5b; }
+  .btn:active{ transform:scale(.98); }
+  .btn.ghost{ background:transparent; border:1px solid var(--border-hi); color:var(--text-dim); }
+  .btn.ghost:hover{ border-color:var(--brass); color:var(--brass); }
+  .btn.danger{ background:var(--red); color:#fff; }
+  .btn.danger:hover{ background:#e5675a; }
+  .btn.sm{ padding:6px 10px; font-size:11px; }
+
+  label{ font-family:var(--mono); font-size:10.5px; letter-spacing:1px; color:var(--text-faint); text-transform:uppercase; display:block; margin-bottom:5px; }
+  input, select{
+    width:100%; background:var(--bg-alt); border:1px solid var(--border); color:var(--text);
+    padding:9px 10px; font-family:var(--body); font-size:13.5px; outline:none;
+  }
+  input:focus, select:focus{ border-color:var(--brass); }
+  .field{ margin-bottom:0; }
+
+  /* ---------- Order form ---------- */
+  .order-form{
+    display:grid; grid-template-columns:repeat(6,1fr) auto; gap:10px; align-items:end;
+    background:var(--panel); border:1px solid var(--border); padding:16px; margin-bottom:18px;
+  }
+  @media(max-width:1100px){ .order-form{ grid-template-columns:repeat(3,1fr);} }
+
+  /* ---------- Tables ---------- */
+  .table-wrap{ background:var(--panel); border:1px solid var(--border); overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
+  thead th{
+    text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--text-faint); padding:12px 14px; border-bottom:1px solid var(--border-hi);
+    background:var(--bg-alt); white-space:nowrap;
+  }
+  tbody td{ padding:11px 14px; border-bottom:1px solid var(--border); color:var(--text); white-space:nowrap; }
+  tbody tr:hover{ background:var(--panel-2); }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.num, th.num{ text-align:right; font-family:var(--mono); }
+  .badge{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:1px; padding:3px 8px;
+    border:1px solid; text-transform:uppercase; display:inline-block;
+  }
+  .badge.ok{ color:var(--green); border-color:var(--green); }
+  .badge.bad{ color:var(--red); border-color:var(--red); }
+  .badge.low{ color:var(--red); border-color:var(--red); }
+  .badge.mid{ color:var(--brass); border-color:var(--brass); }
+  .badge.full{ color:var(--green); border-color:var(--green); }
+  .icon-btn{
+    background:none; border:1px solid var(--border-hi); color:var(--text-dim); cursor:pointer;
+    width:26px; height:26px; font-size:13px; line-height:1;
+  }
+  .icon-btn:hover{ border-color:var(--red); color:var(--red); }
+  .empty-row td{ text-align:center; color:var(--text-faint); font-family:var(--mono); padding:30px; }
+
+  /* ---------- Item / config cards ---------- */
+  .item-form{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:10px; background:var(--panel);
+    border:1px solid var(--border); padding:16px; margin-bottom:18px;
+  }
+  @media(max-width:900px){ .item-form{ grid-template-columns:repeat(2,1fr);} }
+  .item-form .full{ grid-column:1/-1; display:flex; justify-content:flex-end; gap:8px; }
+
+  .config-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media(max-width:900px){ .config-grid{ grid-template-columns:1fr;} }
+  .config-card{ background:var(--panel); border:1px solid var(--border); padding:18px; }
+  .config-card label{ margin-bottom:8px; }
+  .stamp{
+    font-family:var(--display); font-size:11px; letter-spacing:2px; color:var(--text-faint);
+    text-transform:uppercase; margin-top:10px;
+  }
+
+  .toast{
+    position:fixed; bottom:20px; right:20px; background:var(--panel-2); border:1px solid var(--brass);
+    color:var(--text); padding:12px 18px; font-family:var(--mono); font-size:12.5px;
+    transform:translateY(20px); opacity:0; transition:.25s; pointer-events:none; z-index:50;
+    border-left:3px solid var(--brass);
+  }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  footer{ text-align:center; padding:26px; color:var(--text-faint); font-family:var(--mono); font-size:10.5px; letter-spacing:1px; }
+
+  /* ---------- Setup overlay ---------- */
+  #setupOverlay{
+    position:fixed; inset:0; background:var(--bg-alt); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .setup-card{
+    max-width:480px; width:100%; background:var(--panel); border:1px solid var(--border-hi); padding:28px;
+  }
+  .setup-card h2{ font-family:var(--display); text-transform:uppercase; letter-spacing:1.5px; font-size:19px; margin:0 0 6px; color:var(--text); }
+  .setup-card p{ font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 18px; }
+  .setup-card .field{ margin-bottom:14px; }
+  .setup-card .err{ color:var(--red); font-family:var(--mono); font-size:11.5px; margin-top:10px; display:none; }
+  .conn-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:7px; background:var(--text-faint); }
+  .conn-dot.on{ background:var(--green); }
+  .conn-status{ font-family:var(--mono); font-size:10.5px; color:var(--text-faint); display:flex; align-items:center; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark"><span>K</span></div>
+    <div class="brand-text">
+      <h1>Kapak</h1>
+      <p>Enterprise Order Manifest</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="conn-status"><span class="conn-dot" id="connDot"></span><span id="connLabel">Menyambungkan...</span></div>
+    <div class="clock"><b id="clockTime">--:--:--</b><span id="clockDate">-</span></div>
+  </div>
+</div>
+
+<div id="setupOverlay">
+  <div class="setup-card">
+    <h2>Hubungkan Database</h2>
+    <p>Masukkan kredensial Supabase project kamu (sekali saja per perangkat/browser). Lihat panduan pembuatan project di pesan chat.</p>
+    <div class="field" style="margin-bottom:14px;">
+      <label>Project URL</label>
+      <input type="text" id="setupUrl" placeholder="https://xxxxx.supabase.co">
+    </div>
+    <div class="field">
+      <label>Anon Public Key</label>
+      <input type="text" id="setupKey" placeholder="eyJhbGciOi...">
+    </div>
+    <button class="btn" id="setupSaveBtn" style="width:100%; margin-top:6px;">Sambungkan &amp; Mulai</button>
+    <div class="err" id="setupErr"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-view="dashboard">Dashboard</button>
+  <button class="tab-btn" data-view="pesanan">Pesanan</button>
+  <button class="tab-btn" data-view="item">Item &amp; Stok</button>
+  <button class="tab-btn" data-view="rekap">Rekap Pemesan</button>
+  <button class="tab-btn" data-view="config">Pengaturan</button>
+</div>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section class="view active" id="view-dashboard">
+    <div class="section-head">
+      <h2>Ringkasan <em>Operasi</em></h2>
+      <span class="sub">Update real-time dari data pesanan</span>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Grand Total</div><div class="kpi-value brass" id="kpiGrandTotal">Rp0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Order</div><div class="kpi-value" id="kpiTotalOrder">0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Item Terjual</div><div class="kpi-value" id="kpiTotalItem">0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Pemesan</div><div class="kpi-value" id="kpiTotalPemesan">0</div></div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="panel">
+        <h3>Target Bulanan</h3>
+        <div class="target-bar-wrap">
+          <div class="target-bar"><div class="target-bar-fill" id="targetFill" style="width:0%"></div></div>
+          <div class="target-meta">
+            <span id="targetCurrent">Rp0</span>
+            <span id="targetPct">0%</span>
+            <span id="targetGoal">Rp0</span>
+          </div>
+        </div>
+        <h3 style="margin-top:22px;">Pesanan Terbaru</h3>
+        <div id="recentOrders"></div>
+      </div>
+      <div class="panel">
+        <h3>Top Pemesan</h3>
+        <div id="topBuyers"></div>
+        <h3 style="margin-top:22px;">Peringatan Stok</h3>
+        <div id="lowStockList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PESANAN -->
+  <section class="view" id="view-pesanan">
+    <div class="section-head">
+      <h2>Buku <em>Pesanan</em></h2>
+      <span class="sub" id="pesananCount">0 baris</span>
+    </div>
+
+    <form class="order-form" id="orderForm">
+      <div class="field"><label>Tanggal</label><input type="date" id="fTanggal" required></div>
+      <div class="field"><label>Pemesan</label><input type="text" id="fPemesan" placeholder="Nama pemesan" required></div>
+      <div class="field"><label>Jenis</label>
+        <select id="fJenis" required>
+          <option value="">Pilih</option>
+          <option value="ALIANSI">ALIANSI</option>
+          <option value="NON ALIANSI">NON ALIANSI</option>
+        </select>
+      </div>
+      <div class="field"><label>Item</label><select id="fItem" required><option value="">Pilih item</option></select></div>
+      <div class="field"><label>Jumlah</label><input type="number" id="fJumlah" min="1" placeholder="0" required></div>
+      <div class="field"><label>Status</label><div id="fStatusPreview" class="badge mid" style="padding:9px 10px; text-align:center; width:100%;">—</div></div>
+      <button type="submit" class="btn">+ Tambah</button>
+    </form>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Tanggal</th><th>Pemesan</th><th>Jenis</th><th>Item</th>
+          <th class="num">Jumlah</th><th class="num">Harga</th><th class="num">Total</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="orderRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ITEM & STOK -->
+  <section class="view" id="view-item">
+    <div class="section-head">
+      <h2>Master <em>Item</em> &amp; Harga</h2>
+      <span class="sub" id="itemCount">0 item</span>
+    </div>
+
+    <form class="item-form" id="itemForm">
+      <div class="field"><label>Nama Item</label><input type="text" id="iNama" required></div>
+      <div class="field"><label>Kategori</label><input type="text" id="iKategori" placeholder="Senjata / Peluru / Vest" required></div>
+      <div class="field"><label>Stok</label><input type="number" id="iStok" min="0" required></div>
+      <div class="field"><label>Harga Aliansi</label><input type="number" id="iHargaA" min="0" required></div>
+      <div class="field"><label>Max / Order (Aliansi)</label><input type="number" id="iMaxA" min="0" required></div>
+      <div class="field"><label>Harga Non Aliansi</label><input type="number" id="iHargaN" min="0" required></div>
+      <div class="field"><label>Max / Order (Non Aliansi)</label><input type="number" id="iMaxN" min="0" required></div>
+      <div class="full"><button type="submit" class="btn">+ Simpan Item</button></div>
+    </form>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Item</th><th>Kategori</th><th class="num">Harga Aliansi</th><th class="num">Max A</th>
+          <th class="num">Harga Non</th><th class="num">Max N</th><th class="num">Stok</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="itemRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- REKAP -->
+  <section class="view" id="view-rekap">
+    <div class="section-head">
+      <h2>Rekap <em>Pemesan</em></h2>
+      <span class="sub">Diurutkan dari belanja terbesar</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Pemesan</th><th class="num">Jumlah Order</th><th class="num">Total Belanja</th></tr></thead>
+        <tbody id="rekapRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section class="view" id="view-config">
+    <div class="section-head"><h2>Pengaturan <em>Sistem</em></h2></div>
+    <div class="config-grid">
+      <div class="config-card">
+        <label>Target Bulanan (Rp)</label>
+        <input type="number" id="cTarget" min="0">
+        <div class="stamp">Digunakan pada progress bar dashboard</div>
+      </div>
+      <div class="config-card">
+        <label>Batas Stok Menipis</label>
+        <input type="number" id="cBatasStok" min="0">
+        <div class="stamp">Item di bawah angka ini dianggap menipis</div>
+      </div>
+      <div class="config-card">
+        <label>Mata Uang</label>
+        <input type="text" id="cCurrency">
+        <div class="stamp">Prefix ditampilkan di semua nominal</div>
+      </div>
+    </div>
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <button class="btn" id="saveConfigBtn">Simpan Pengaturan</button>
+      <button class="btn danger ghost" id="resetBtn" style="background:transparent; border:1px solid var(--red); color:var(--red);">Reset Semua Data</button>
+    </div>
+  </section>
+
+</main>
+
+<footer>KAPAK — ENTERPRISE MANIFEST · DATA TERSIMPAN DI CLOUD</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  let state = { items: [], orders: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp' } };
+
+  const DEFAULT_ITEMS = [
+    { id:'i1', nama:'GLOCK 18', kategori:'Senjata', hargaA:72500, maxA:20, hargaN:75000, maxN:10, stok:50 },
+    { id:'i2', nama:'GLOCK 22', kategori:'Senjata', hargaA:80000, maxA:20, hargaN:85000, maxN:10, stok:50 },
+    { id:'i3', nama:'PHYTON', kategori:'Senjata', hargaA:127500, maxA:20, hargaN:130000, maxN:10, stok:30 },
+    { id:'i4', nama:'SMG MPX', kategori:'Senjata', hargaA:202500, maxA:20, hargaN:205000, maxN:10, stok:25 },
+    { id:'i5', nama:'THOMPSON', kategori:'Senjata', hargaA:156000, maxA:20, hargaN:162000, maxN:10, stok:20 },
+    { id:'i6', nama:'.44 MAGNUM', kategori:'Peluru', hargaA:57500, maxA:40, hargaN:62000, maxN:20, stok:200 },
+    { id:'i7', nama:'.444 MAGNUM', kategori:'Peluru', hargaA:95000, maxA:40, hargaN:100000, maxN:20, stok:200 },
+    { id:'i8', nama:'38 LC', kategori:'Peluru', hargaA:77750, maxA:40, hargaN:80500, maxN:20, stok:200 },
+    { id:'i9', nama:'45 ACP', kategori:'Peluru', hargaA:60000, maxA:60, hargaN:62000, maxN:30, stok:250 },
+    { id:'i10', nama:'9 MM', kategori:'Peluru', hargaA:46650, maxA:60, hargaN:54000, maxN:30, stok:250 },
+    { id:'i11', nama:'VEST', kategori:'Vest', hargaA:60000, maxA:20, hargaN:65000, maxN:15, stok:40 },
+  ];
+
+  function uid(){ return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function rupiah(n){ return (state.config.currency||'Rp') + Number(n||0).toLocaleString('id-ID'); }
+  function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+  function fmtDateShort(iso){
+    if(!iso) return '-';
+    const d = new Date(iso+'T00:00:00');
+    if(isNaN(d)) return iso;
+    return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+  }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=>t.classList.remove('show'), 2400);
+  }
+
+  // ---------- Supabase connection ----------
+  let sb = null;
+
+  function setConn(status, label){
+    document.getElementById('connDot').className = 'conn-dot' + (status==='on' ? ' on' : '');
+    document.getElementById('connLabel').textContent = label;
+  }
+
+  function getSavedCreds(){
+    try{
+      const url = localStorage.getItem('dbrp_url');
+      const key = localStorage.getItem('dbrp_key');
+      if(url && key) return { url, key };
+    }catch(e){}
+    return null;
+  }
+  function saveCreds(url, key){
+    try{ localStorage.setItem('dbrp_url', url); localStorage.setItem('dbrp_key', key); }catch(e){}
+  }
+
+  async function connect(url, key){
+    sb = window.supabase.createClient(url, key);
+    // sanity check: try a harmless query
+    const { error } = await sb.from('config').select('key').limit(1);
+    if(error) throw error;
+  }
+
+  function rowsToItem(r){ return { id:r.id, nama:r.nama, kategori:r.kategori, hargaA:Number(r.harga_a), maxA:Number(r.max_a), hargaN:Number(r.harga_n), maxN:Number(r.max_n), stok:Number(r.stok) }; }
+  function rowsToOrder(r){ return { id:r.id, _seq: r.seq, tanggal:r.tanggal, pemesan:r.pemesan, jenis:r.jenis, itemId:r.item_id, jumlah:Number(r.jumlah), harga:Number(r.harga), total:Number(r.total), status:r.status }; }
+
+  // ---------- Storage (Supabase) ----------
+  async function loadAll(){
+    const { data: itemRows, error: e1 } = await sb.from('items').select('*');
+    if(e1) throw e1;
+    if(!itemRows || !itemRows.length){
+      const seed = DEFAULT_ITEMS.map(i=>({ id:i.id, nama:i.nama, kategori:i.kategori, harga_a:i.hargaA, max_a:i.maxA, harga_n:i.hargaN, max_n:i.maxN, stok:i.stok }));
+      const { error: seedErr } = await sb.from('items').insert(seed);
+      if(seedErr) throw seedErr;
+      state.items = DEFAULT_ITEMS.slice();
+    } else {
+      state.items = itemRows.map(rowsToItem);
+    }
+
+    const { data: orderRows, error: e2 } = await sb.from('orders').select('*');
+    if(e2) throw e2;
+    state.orders = (orderRows||[]).map(rowsToOrder);
+
+    const { data: cfgRows, error: e3 } = await sb.from('config').select('*');
+    if(e3) throw e3;
+    if(cfgRows && cfgRows.length){
+      const map = {}; cfgRows.forEach(r=>map[r.key]=r.value);
+      state.config = {
+        targetBulanan: Number(map.target_bulanan ?? 100000000),
+        batasStok: Number(map.batas_stok ?? 20),
+        currency: map.mata_uang || 'Rp'
+      };
+    } else {
+      await sb.from('config').insert([
+        { key:'target_bulanan', value:String(state.config.targetBulanan) },
+        { key:'batas_stok', value:String(state.config.batasStok) },
+        { key:'mata_uang', value:state.config.currency }
+      ]);
+    }
+  }
+
+  async function dbInsertItem(item){
+    const { error } = await sb.from('items').insert([{ id:item.id, nama:item.nama, kategori:item.kategori, harga_a:item.hargaA, max_a:item.maxA, harga_n:item.hargaN, max_n:item.maxN, stok:item.stok }]);
+    if(error) console.error('insert item failed', error);
+  }
+  async function dbUpdateItemStok(id, stok){
+    const { error } = await sb.from('items').update({ stok }).eq('id', id);
+    if(error) console.error('update stok failed', error);
+  }
+  async function dbDeleteItem(id){
+    const { error } = await sb.from('items').delete().eq('id', id);
+    if(error) console.error('delete item failed', error);
+  }
+  async function dbInsertOrder(o){
+    const { error } = await sb.from('orders').insert([{ id:o.id, seq:o._seq, tanggal:o.tanggal, pemesan:o.pemesan, jenis:o.jenis, item_id:o.itemId, jumlah:o.jumlah, harga:o.harga, total:o.total, status:o.status }]);
+    if(error) console.error('insert order failed', error);
+  }
+  async function dbDeleteOrder(id){
+    const { error } = await sb.from('orders').delete().eq('id', id);
+    if(error) console.error('delete order failed', error);
+  }
+  async function dbSaveConfig(cfg){
+    await Promise.all([
+      sb.from('config').update({ value:String(cfg.targetBulanan) }).eq('key','target_bulanan'),
+      sb.from('config').update({ value:String(cfg.batasStok) }).eq('key','batas_stok'),
+      sb.from('config').update({ value:cfg.currency }).eq('key','mata_uang'),
+    ]);
+  }
+  async function dbResetAll(){
+    await sb.from('orders').delete().neq('id','__none__');
+    await sb.from('items').delete().neq('id','__none__');
+    const seed = DEFAULT_ITEMS.map(i=>({ id:i.id, nama:i.nama, kategori:i.kategori, harga_a:i.hargaA, max_a:i.maxA, harga_n:i.hargaN, max_n:i.maxN, stok:i.stok }));
+    await sb.from('items').insert(seed);
+    await dbSaveConfig({ targetBulanan:100000000, batasStok:20, currency:'Rp' });
+  }
+
+  function subscribeRealtime(){
+    sb.channel('db-rp-changes')
+      .on('postgres_changes', { event:'*', schema:'public', table:'orders' }, async ()=>{ await reloadAndRender(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'items' }, async ()=>{ await reloadAndRender(); })
+      .on('postgres_changes', { event:'*', schema:'public', table:'config' }, async ()=>{ await reloadAndRender(); })
+      .subscribe();
+  }
+  async function reloadAndRender(){
+    await loadAll();
+    renderAll();
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    });
+  });
+
+  // ---------- Clock ----------
+  function tickClock(){
+    const d = new Date();
+    document.getElementById('clockTime').textContent = d.toLocaleTimeString('id-ID');
+    document.getElementById('clockDate').textContent = d.toLocaleDateString('id-ID', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+  }
+  tickClock(); setInterval(tickClock, 1000);
+
+  // ---------- Derived helpers ----------
+  function itemById(id){ return state.items.find(i=>i.id===id); }
+  function itemByName(name){ return state.items.find(i=>i.nama===name); }
+
+  function computeOrder(jenis, itemId, jumlah){
+    const item = itemById(itemId);
+    if(!item || !jenis || !jumlah) return { harga:0, total:0, status:'' };
+    const harga = jenis === 'ALIANSI' ? item.hargaA : item.hargaN;
+    const max = jenis === 'ALIANSI' ? item.maxA : item.maxN;
+    const total = harga * Number(jumlah);
+    const status = Number(jumlah) <= max ? 'OK' : 'MELEBIHI BATAS';
+    return { harga, total, status };
+  }
+
+  // ---------- Render: Item select options ----------
+  function renderItemOptions(){
+    const sel = document.getElementById('fItem');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Pilih item</option>' +
+      state.items.map(i=>`<option value="${i.id}">${i.nama} (${i.kategori})</option>`).join('');
+    if(cur) sel.value = cur;
+  }
+
+  // ---------- Render: Orders ----------
+  function renderOrders(){
+    const tbody = document.getElementById('orderRows');
+    if(!state.orders.length){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Belum ada pesanan. Tambahkan pesanan pertama di atas.</td></tr>';
+    } else {
+      const sorted = state.orders.slice().sort((a,b)=> (b.tanggal||'').localeCompare(a.tanggal||'') || b._seq-a._seq);
+      tbody.innerHTML = sorted.map(o=>{
+        const item = itemById(o.itemId);
+        const badgeClass = o.status === 'OK' ? 'ok' : 'bad';
+        return `<tr>
+          <td>${fmtDateShort(o.tanggal)}</td>
+          <td>${o.pemesan}</td>
+          <td>${o.jenis}</td>
+          <td>${item ? item.nama : '(dihapus)'}</td>
+          <td class="num">${o.jumlah}</td>
+          <td class="num">${rupiah(o.harga)}</td>
+          <td class="num">${rupiah(o.total)}</td>
+          <td><span class="badge ${badgeClass}">${o.status}</span></td>
+          <td><button class="icon-btn" data-del-order="${o.id}" title="Hapus">✕</button></td>
+        </tr>`;
+      }).join('');
+    }
+    document.getElementById('pesananCount').textContent = state.orders.length + ' baris';
+  }
+
+  // ---------- Render: Items table ----------
+  function renderItems(){
+    const tbody = document.getElementById('itemRows');
+    if(!state.items.length){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Belum ada item.</td></tr>';
+    } else {
+      tbody.innerHTML = state.items.map(i=>{
+        let stokClass = 'full';
+        if(i.stok <= 0) stokClass = 'low';
+        else if(i.stok <= state.config.batasStok) stokClass = 'low';
+        else if(i.stok <= state.config.batasStok*2) stokClass = 'mid';
+        const stokLabel = i.stok <= 0 ? 'HABIS' : (i.stok <= state.config.batasStok ? 'MENIPIS' : 'AMAN');
+        return `<tr>
+          <td>${i.nama}</td>
+          <td>${i.kategori}</td>
+          <td class="num">${rupiah(i.hargaA)}</td>
+          <td class="num">${i.maxA}</td>
+          <td class="num">${rupiah(i.hargaN)}</td>
+          <td class="num">${i.maxN}</td>
+          <td class="num">${i.stok}</td>
+          <td><span class="badge ${stokClass}">${stokLabel}</span></td>
+          <td><button class="icon-btn" data-del-item="${i.id}" title="Hapus">✕</button></td>
+        </tr>`;
+      }).join('');
+    }
+    document.getElementById('itemCount').textContent = state.items.length + ' item';
+  }
+
+  // ---------- Render: Rekap ----------
+  function renderRekap(){
+    const map = {};
+    state.orders.forEach(o=>{
+      if(!map[o.pemesan]) map[o.pemesan] = { total:0, count:0 };
+      map[o.pemesan].total += o.total;
+      map[o.pemesan].count += 1;
+    });
+    const rows = Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
+    const tbody = document.getElementById('rekapRows');
+    if(!rows.length){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Belum ada data pemesan.</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(([name, v], idx)=>`<tr>
+        <td class="num">${idx+1}</td>
+        <td>${name}</td>
+        <td class="num">${v.count}</td>
+        <td class="num">${rupiah(v.total)}</td>
+      </tr>`).join('');
+    }
+  }
+
+  // ---------- Render: Dashboard ----------
+  function renderDashboard(){
+    const grandTotal = state.orders.reduce((s,o)=>s+o.total,0);
+    const totalItem = state.orders.reduce((s,o)=>s+Number(o.jumlah||0),0);
+    const totalOrder = state.orders.length;
+    const totalPemesan = new Set(state.orders.map(o=>o.pemesan)).size;
+
+    document.getElementById('kpiGrandTotal').textContent = rupiah(grandTotal);
+    document.getElementById('kpiTotalOrder').textContent = totalOrder.toLocaleString('id-ID');
+    document.getElementById('kpiTotalItem').textContent = totalItem.toLocaleString('id-ID');
+    document.getElementById('kpiTotalPemesan').textContent = totalPemesan.toLocaleString('id-ID');
+
+    const target = state.config.targetBulanan || 0;
+    const pct = target > 0 ? Math.min(100, (grandTotal/target)*100) : 0;
+    document.getElementById('targetFill').style.width = pct.toFixed(1)+'%';
+    document.getElementById('targetCurrent').textContent = rupiah(grandTotal);
+    document.getElementById('targetPct').textContent = pct.toFixed(1)+'%';
+    document.getElementById('targetGoal').textContent = rupiah(target);
+
+    // recent orders
+    const recent = state.orders.slice().sort((a,b)=>b._seq-a._seq).slice(0,5);
+    const recentEl = document.getElementById('recentOrders');
+    recentEl.innerHTML = recent.length ? recent.map(o=>{
+      const item = itemById(o.itemId);
+      return `<div class="mini-row"><span class="name">${o.pemesan} — ${item?item.nama:'-'}</span><span class="val">${rupiah(o.total)}</span></div>`;
+    }).join('') : '<div class="mini-row"><span class="name" style="color:var(--text-faint)">Belum ada pesanan</span></div>';
+
+    // top buyers
+    const map = {};
+    state.orders.forEach(o=>{ map[o.pemesan] = (map[o.pemesan]||0) + o.total; });
+    const top = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const topEl = document.getElementById('topBuyers');
+    topEl.innerHTML = top.length ? top.map(([name,val],idx)=>
+      `<div class="mini-row"><span class="name"><span class="rank">#${idx+1}</span>${name}</span><span class="val">${rupiah(val)}</span></div>`
+    ).join('') : '<div class="mini-row"><span class="name" style="color:var(--text-faint)">Belum ada data</span></div>';
+
+    // low stock
+    const low = state.items.filter(i=>i.stok <= state.config.batasStok).sort((a,b)=>a.stok-b.stok);
+    const lowEl = document.getElementById('lowStockList');
+    lowEl.innerHTML = low.length ? low.map(i=>
+      `<div class="mini-row"><span class="name">${i.nama}</span><span class="val" style="color:var(--red)">${i.stok} unit</span></div>`
+    ).join('') : '<div class="mini-row"><span class="name" style="color:var(--text-faint)">Semua stok aman</span></div>';
+  }
+
+  function renderAll(){
+    renderItemOptions();
+    renderOrders();
+    renderItems();
+    renderRekap();
+    renderDashboard();
+  }
+
+  // ---------- Order form live preview ----------
+  function updatePreview(){
+    const jenis = document.getElementById('fJenis').value;
+    const itemId = document.getElementById('fItem').value;
+    const jumlah = document.getElementById('fJumlah').value;
+    const prev = document.getElementById('fStatusPreview');
+    if(!jenis || !itemId || !jumlah){ prev.textContent='—'; prev.className='badge mid'; prev.style.cssText='padding:9px 10px; text-align:center; width:100%;'; return; }
+    const r = computeOrder(jenis, itemId, jumlah);
+    prev.textContent = r.status + ' · ' + rupiah(r.total);
+    prev.className = 'badge ' + (r.status==='OK' ? 'ok':'bad');
+    prev.style.cssText = 'padding:9px 10px; text-align:center; width:100%;';
+  }
+  ['fJenis','fItem','fJumlah'].forEach(id=>document.getElementById(id).addEventListener('input', updatePreview));
+
+  // ---------- Order form submit ----------
+  document.getElementById('fTanggal').value = todayISO();
+  document.getElementById('orderForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const tanggal = document.getElementById('fTanggal').value;
+    const pemesan = document.getElementById('fPemesan').value.trim();
+    const jenis = document.getElementById('fJenis').value;
+    const itemId = document.getElementById('fItem').value;
+    const jumlah = Number(document.getElementById('fJumlah').value);
+    if(!tanggal||!pemesan||!jenis||!itemId||!jumlah){ toast('Lengkapi semua field.'); return; }
+
+    const r = computeOrder(jenis, itemId, jumlah);
+    const order = { id: uid(), _seq: Date.now(), tanggal, pemesan, jenis, itemId, jumlah, harga:r.harga, total:r.total, status:r.status };
+    state.orders.push(order);
+    await dbInsertOrder(order);
+
+    const item = itemById(itemId);
+    if(item){ item.stok = Math.max(0, item.stok - jumlah); await dbUpdateItemStok(item.id, item.stok); }
+
+    renderAll();
+    e.target.reset();
+    document.getElementById('fTanggal').value = todayISO();
+    updatePreview();
+    toast(r.status==='OK' ? 'Pesanan ditambahkan.' : 'Pesanan ditambahkan — melebihi batas!');
+  });
+
+  document.getElementById('orderRows').addEventListener('click', async (e)=>{
+    const btn = e.target.closest('[data-del-order]');
+    if(!btn) return;
+    const id = btn.dataset.delOrder;
+    const order = state.orders.find(o=>o.id===id);
+    if(order){
+      const item = itemById(order.itemId);
+      if(item){ item.stok += order.jumlah; await dbUpdateItemStok(item.id, item.stok); }
+    }
+    state.orders = state.orders.filter(o=>o.id!==id);
+    await dbDeleteOrder(id);
+    renderAll();
+    toast('Pesanan dihapus, stok dikembalikan.');
+  });
+
+  // ---------- Item form ----------
+  document.getElementById('itemForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const nama = document.getElementById('iNama').value.trim();
+    const kategori = document.getElementById('iKategori').value.trim();
+    const stok = Number(document.getElementById('iStok').value);
+    const hargaA = Number(document.getElementById('iHargaA').value);
+    const maxA = Number(document.getElementById('iMaxA').value);
+    const hargaN = Number(document.getElementById('iHargaN').value);
+    const maxN = Number(document.getElementById('iMaxN').value);
+    if(!nama||!kategori){ toast('Lengkapi nama dan kategori.'); return; }
+
+    const newItem = { id: uid(), nama, kategori, stok, hargaA, maxA, hargaN, maxN };
+    state.items.push(newItem);
+    await dbInsertItem(newItem);
+    renderAll();
+    e.target.reset();
+    toast('Item disimpan.');
+  });
+
+  document.getElementById('itemRows').addEventListener('click', async (e)=>{
+    const btn = e.target.closest('[data-del-item]');
+    if(!btn) return;
+    const id = btn.dataset.delItem;
+    const inUse = state.orders.some(o=>o.itemId===id);
+    if(inUse && !confirm('Item ini digunakan pada pesanan yang sudah ada. Tetap hapus dari master item?')) return;
+    state.items = state.items.filter(i=>i.id!==id);
+    await dbDeleteItem(id);
+    renderAll();
+    toast('Item dihapus.');
+  });
+
+  // ---------- Config ----------
+  function loadConfigForm(){
+    document.getElementById('cTarget').value = state.config.targetBulanan;
+    document.getElementById('cBatasStok').value = state.config.batasStok;
+    document.getElementById('cCurrency').value = state.config.currency;
+  }
+  document.getElementById('saveConfigBtn').addEventListener('click', async ()=>{
+    state.config.targetBulanan = Number(document.getElementById('cTarget').value)||0;
+    state.config.batasStok = Number(document.getElementById('cBatasStok').value)||0;
+    state.config.currency = document.getElementById('cCurrency').value.trim() || 'Rp';
+    await dbSaveConfig(state.config);
+    renderAll();
+    toast('Pengaturan disimpan.');
+  });
+  document.getElementById('resetBtn').addEventListener('click', async ()=>{
+    if(!confirm('Yakin ingin menghapus SEMUA data (pesanan, item, pengaturan) untuk SEMUA admin? Tindakan ini tidak bisa dibatalkan.')) return;
+    await dbResetAll();
+    await reloadAndRender();
+    loadConfigForm();
+    toast('Semua data direset ke default.');
+  });
+
+  // ---------- Setup / Init ----------
+  const overlay = document.getElementById('setupOverlay');
+  const saved = getSavedCreds();
+  if(saved) document.getElementById('setupUrl').value = saved.url, document.getElementById('setupKey').value = saved.key;
+
+  async function tryStart(url, key){
+    const errEl = document.getElementById('setupErr');
+    errEl.style.display = 'none';
+    setConn('off', 'Menyambungkan...');
+    try{
+      await connect(url, key);
+      saveCreds(url, key);
+      overlay.style.display = 'none';
+      await loadAll();
+      renderAll();
+      loadConfigForm();
+      updatePreview();
+      subscribeRealtime();
+      setConn('on', 'Tersambung');
+    }catch(err){
+      console.error(err);
+      setConn('off', 'Gagal tersambung');
+      errEl.textContent = 'Gagal menyambung: periksa Project URL dan Anon Key, lalu pastikan tabel sudah dibuat.';
+      errEl.style.display = 'block';
+      overlay.style.display = 'flex';
+    }
+  }
+
+  document.getElementById('setupSaveBtn').addEventListener('click', ()=>{
+    const url = document.getElementById('setupUrl').value.trim();
+    const key = document.getElementById('setupKey').value.trim();
+    if(!url || !key){ const e=document.getElementById('setupErr'); e.textContent='Isi Project URL dan Anon Key terlebih dahulu.'; e.style.display='block'; return; }
+    tryStart(url, key);
+  });
+
+  (function init(){
+    if(saved){ overlay.style.display = 'none'; tryStart(saved.url, saved.key); }
+    else { overlay.style.display = 'flex'; setConn('off', 'Belum tersambung'); }
+  })();
+
+})();
+</script>
+</body>
+</html>
