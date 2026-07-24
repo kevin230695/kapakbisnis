@@ -2099,7 +2099,7 @@
     ];
     if(keterangan) fields.push({ name: 'Keterangan', value: keterangan.slice(0, 500) });
     await postDiscord(url, {
-      username: 'KAPAK Order Bot',
+      username: 'PT. KAPAK KOMPAK',
       embeds: [{
         title: `🧾 Pesanan Baru — ${pemesan}`,
         color: anyExceeded ? DISCORD_COLOR_WARN : DISCORD_COLOR_OK,
@@ -2126,7 +2126,7 @@
     ];
     if(order.keterangan) fields.push({ name: 'Keterangan', value: order.keterangan.slice(0, 500) });
     await postDiscord(url, {
-      username: 'KAPAK Order Bot',
+      username: 'PT. KAPAK KOMPAK',
       embeds: [{
         title: `💰 Pesanan Selesai — ${order.pemesan}`,
         color: DISCORD_COLOR_OK,
@@ -2150,7 +2150,7 @@
     ];
     if(expense.keterangan) fields.push({ name: 'Keterangan', value: expense.keterangan.slice(0, 500) });
     await postDiscord(url, {
-      username: 'KAPAK Order Bot',
+      username: 'PT. KAPAK KOMPAK',
       embeds: [{
         title: `💸 Pengeluaran Baru`,
         color: DISCORD_COLOR_INFO,
@@ -2169,7 +2169,7 @@
       ? `• ${i.nama} — HABIS (stok 0)`
       : `• ${i.nama} — menipis (stok ${i.stok}, batas ${state.config.batasStok})`);
     await postDiscord(url, {
-      username: 'KAPAK Order Bot',
+      username: 'PT. KAPAK KOMPAK',
       embeds: [{
         title: `⚠️ Peringatan Stok Menipis`,
         color: DISCORD_COLOR_STOK,
@@ -2205,7 +2205,7 @@
         await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username:'KAPAK Order Bot', content:'✅ Tes koneksi webhook dari KAPAK berhasil.' })
+          body: JSON.stringify({ username:'PT. KAPAK KOMPAK', content:'✅ Tes koneksi webhook dari KAPAK berhasil.' })
         });
         toast('Tes terkirim — cek channel Discord kamu.');
       }catch(err){
