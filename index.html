@@ -262,6 +262,15 @@
   }
   .cashflow-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
   @media(max-width:700px){ .cashflow-grid{ grid-template-columns:1fr; } }
+  .cashflow-grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  @media(max-width:900px){ .cashflow-grid-4{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:520px){ .cashflow-grid-4{ grid-template-columns:1fr; } }
+  .ledger-badge{ font-family:var(--mono); font-size:10.5px; letter-spacing:.5px; padding:2px 8px; border:1px solid; text-transform:uppercase; display:inline-block; }
+  .ledger-badge.masuk{ color:var(--green); border-color:var(--green); }
+  .ledger-badge.keluar{ color:var(--red); border-color:var(--red); }
+  .ledger-num-pos{ color:var(--green); }
+  .ledger-num-neg{ color:var(--red); }
+  .ledger-saldo-row td{ font-family:var(--mono); }
 
   /* ---------- Rekap row (clickable) ---------- */
   #rekapRows tr{ cursor:pointer; }
@@ -364,6 +373,7 @@
   <button class="tab-btn" data-view="pesanan">Pesanan</button>
   <button class="tab-btn" data-view="item">Item &amp; Stok</button>
   <button class="tab-btn" data-view="pengeluaran">Pengeluaran</button>
+  <button class="tab-btn" data-view="pembukuan">Pembukuan</button>
   <button class="tab-btn" data-view="rekap">Rekap Pemesan</button>
   <button class="tab-btn" data-view="rekaptanggal">Rekap Tanggal</button>
   <button class="tab-btn" data-view="arsip">Arsip</button>
@@ -386,10 +396,11 @@
       <div class="kpi-card"><div class="kpi-label">Total Pemesan</div><div class="kpi-value" id="kpiTotalPemesan">0</div></div>
     </div>
 
-    <div class="cashflow-grid">
+    <div class="cashflow-grid-4">
+      <div class="kpi-card"><div class="kpi-label">Saldo Awal</div><div class="kpi-value" id="dashSaldoAwal">Rp0</div></div>
       <div class="kpi-card"><div class="kpi-label">Total Pemasukan</div><div class="kpi-value" style="color:var(--green);" id="dashPemasukan">Rp0</div></div>
       <div class="kpi-card"><div class="kpi-label">Total Pengeluaran</div><div class="kpi-value" style="color:var(--red);" id="dashPengeluaran">Rp0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Arus Kas Bersih</div><div class="kpi-value brass" id="dashArusKas">Rp0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Saldo Kas Saat Ini</div><div class="kpi-value brass" id="dashArusKas">Rp0</div></div>
     </div>
 
     <div class="dash-grid">
@@ -563,6 +574,39 @@
     </div>
   </section>
 
+  <!-- PEMBUKUAN -->
+  <section class="view" id="view-pembukuan">
+    <div class="section-head">
+      <h2>Pembukuan <em>Arus Kas</em></h2>
+      <span class="sub">Rincian kronologis semua transaksi kas masuk (pesanan) dan kas keluar (pengeluaran), lengkap dengan saldo berjalan</span>
+    </div>
+
+    <div class="cashflow-grid-4">
+      <div class="kpi-card"><div class="kpi-label">Saldo Awal</div><div class="kpi-value" id="lgSaldoAwal">Rp0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Kas Masuk</div><div class="kpi-value" style="color:var(--green);" id="lgMasuk">Rp0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Kas Keluar</div><div class="kpi-value" style="color:var(--red);" id="lgKeluar">Rp0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Saldo Akhir</div><div class="kpi-value brass" id="lgSaldoAkhir">Rp0</div></div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="field"><label>Dari Tanggal</label><input type="date" id="lgFilterDari"></div>
+      <div class="field"><label>Sampai Tanggal</label><input type="date" id="lgFilterSampai"></div>
+      <div class="field" style="grid-column:span 2;"><label>Cari Keterangan / Pemesan / Item</label><input type="text" id="lgFilterKeyword" placeholder="Cari..."></div>
+      <button type="button" class="btn ghost" id="lgFilterResetBtn">Reset Filter</button>
+    </div>
+    <div class="filter-info" id="lgFilterInfo"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Tanggal</th><th>Keterangan</th><th>Jenis</th>
+          <th class="num">Kas Masuk</th><th class="num">Kas Keluar</th><th class="num">Saldo Berjalan</th>
+        </tr></thead>
+        <tbody id="ledgerRows"></tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- REKAP -->
   <section class="view" id="view-rekap">
     <div class="section-head">
@@ -632,6 +676,11 @@
         <label>Mata Uang</label>
         <input type="text" id="cCurrency">
         <div class="stamp">Prefix ditampilkan di semua nominal</div>
+      </div>
+      <div class="config-card">
+        <label>Saldo Awal Kas (Rp)</label>
+        <input type="number" id="cSaldoAwal">
+        <div class="stamp">Saldo kas sebelum pencatatan dimulai, dipakai di Dashboard &amp; Pembukuan</div>
       </div>
     </div>
     <div style="margin-top:16px; display:flex; gap:10px;">
@@ -723,8 +772,9 @@
 (function(){
   "use strict";
 
-  let state = { items: [], orders: [], archives: [], expenses: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp', discordWebhook: '' } };
+  let state = { items: [], orders: [], archives: [], expenses: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp', discordWebhook: '', saldoAwal: 0 } };
   let filters = { tanggalDari: '', tanggalSampai: '', pemesan: '', status: '', statusPesanan: '' };
+  let ledgerFilters = { tanggalDari: '', tanggalSampai: '', keyword: '' };
 
   const DEFAULT_ITEMS = [
     { id:'i1', nama:'GLOCK 18', kategori:'Senjata', hargaA:72500, maxA:20, hargaN:75000, maxN:10, stok:50 },
@@ -827,17 +877,22 @@
         targetBulanan: Number(map.target_bulanan ?? 100000000),
         batasStok: Number(map.batas_stok ?? 20),
         currency: map.mata_uang || 'Rp',
-        discordWebhook: map.discord_webhook_url || ''
+        discordWebhook: map.discord_webhook_url || '',
+        saldoAwal: Number(map.saldo_awal ?? 0)
       };
       if(!('discord_webhook_url' in map)){
         await sb.from('config').insert([{ key:'discord_webhook_url', value:'' }]);
+      }
+      if(!('saldo_awal' in map)){
+        await sb.from('config').insert([{ key:'saldo_awal', value:'0' }]);
       }
     } else {
       await sb.from('config').insert([
         { key:'target_bulanan', value:String(state.config.targetBulanan) },
         { key:'batas_stok', value:String(state.config.batasStok) },
         { key:'mata_uang', value:state.config.currency },
-        { key:'discord_webhook_url', value:'' }
+        { key:'discord_webhook_url', value:'' },
+        { key:'saldo_awal', value:'0' }
       ]);
     }
   }
@@ -896,6 +951,7 @@
       sb.from('config').update({ value:String(cfg.batasStok) }).eq('key','batas_stok'),
       sb.from('config').update({ value:cfg.currency }).eq('key','mata_uang'),
       sb.from('config').upsert([{ key:'discord_webhook_url', value:cfg.discordWebhook || '' }], { onConflict:'key' }),
+      sb.from('config').upsert([{ key:'saldo_awal', value:String(cfg.saldoAwal||0) }], { onConflict:'key' }),
     ]);
   }
   async function dbResetAll(){
@@ -905,7 +961,7 @@
     await sb.from('items').delete().neq('id','__none__');
     const seed = DEFAULT_ITEMS.map(i=>({ id:i.id, nama:i.nama, kategori:i.kategori, harga_a:i.hargaA, max_a:i.maxA, harga_n:i.hargaN, max_n:i.maxN, stok:i.stok }));
     await sb.from('items').insert(seed);
-    await dbSaveConfig({ targetBulanan:100000000, batasStok:20, currency:'Rp', discordWebhook: state.config.discordWebhook || '' });
+    await dbSaveConfig({ targetBulanan:100000000, batasStok:20, currency:'Rp', discordWebhook: state.config.discordWebhook || '', saldoAwal: state.config.saldoAwal || 0 });
   }
 
   function subscribeRealtime(){
@@ -1128,6 +1184,112 @@
     document.getElementById('expFilterTanggalSampai').value = '';
     document.getElementById('expFilterKeyword').value = '';
     renderExpenses();
+  });
+
+  // ---------- Pembukuan (buku besar / ledger) ----------
+  function buildLedgerEntries(){
+    const entries = [];
+    state.orders.forEach(o=>{
+      if((o.statusPesanan||'DIPROSES') === 'DIBATALKAN') return;
+      const item = itemById(o.itemId);
+      entries.push({
+        tanggal: o.tanggal || '',
+        seq: o._seq || 0,
+        keterangan: `${o.pemesan} — ${item ? item.nama : '(dihapus)'} (${o.jenis})`,
+        jenis: 'masuk',
+        jumlah: o.total,
+        searchHay: `${o.pemesan} ${item ? item.nama : ''} ${o.jenis}`.toLowerCase()
+      });
+    });
+    state.expenses.forEach(e=>{
+      entries.push({
+        tanggal: e.tanggal || '',
+        seq: 0,
+        keterangan: e.keterangan ? e.keterangan : (e.itemNama ? `Restock ${e.itemNama}` : 'Pengeluaran'),
+        jenis: 'keluar',
+        jumlah: e.total,
+        searchHay: `${e.itemNama||''} ${e.keterangan||''}`.toLowerCase()
+      });
+    });
+    // urutkan kronologis (tanggal lama -> baru), lalu berdasar urutan input
+    entries.sort((a,b)=>{
+      const t = (a.tanggal||'').localeCompare(b.tanggal||'');
+      if(t !== 0) return t;
+      return (a.seq||0) - (b.seq||0);
+    });
+    return entries;
+  }
+  function applyLedgerFilters(entries){
+    return entries.filter(en=>{
+      if(ledgerFilters.tanggalDari && (en.tanggal||'') < ledgerFilters.tanggalDari) return false;
+      if(ledgerFilters.tanggalSampai && (en.tanggal||'') > ledgerFilters.tanggalSampai) return false;
+      if(ledgerFilters.keyword){
+        const kw = ledgerFilters.keyword.toLowerCase();
+        if(!en.searchHay.includes(kw)) return false;
+      }
+      return true;
+    });
+  }
+  function renderPembukuan(){
+    const saldoAwal = state.config.saldoAwal || 0;
+    const allEntries = buildLedgerEntries();
+    const filtered = applyLedgerFilters(allEntries);
+
+    // saldo berjalan dihitung dari saldo awal + SELURUH entri (tidak dipengaruhi filter tampilan),
+    // supaya tetap akurat meski sedang memfilter tanggal/keyword tertentu.
+    let running = saldoAwal;
+    const runningByEntry = new Map();
+    allEntries.forEach(en=>{
+      running += en.jenis === 'masuk' ? en.jumlah : -en.jumlah;
+      runningByEntry.set(en, running);
+    });
+    const saldoAkhir = running;
+
+    const totalMasuk = allEntries.filter(en=>en.jenis==='masuk').reduce((s,en)=>s+en.jumlah,0);
+    const totalKeluar = allEntries.filter(en=>en.jenis==='keluar').reduce((s,en)=>s+en.jumlah,0);
+
+    document.getElementById('lgSaldoAwal').textContent = rupiah(saldoAwal);
+    document.getElementById('lgMasuk').textContent = rupiah(totalMasuk);
+    document.getElementById('lgKeluar').textContent = rupiah(totalKeluar);
+    const saldoAkhirEl = document.getElementById('lgSaldoAkhir');
+    saldoAkhirEl.textContent = rupiah(saldoAkhir);
+    saldoAkhirEl.style.color = saldoAkhir < 0 ? 'var(--red)' : 'var(--brass)';
+
+    const tbody = document.getElementById('ledgerRows');
+    if(!allEntries.length){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Belum ada transaksi tercatat.</td></tr>';
+    } else if(!filtered.length){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Tidak ada transaksi yang cocok dengan filter.</td></tr>';
+    } else {
+      // tampilkan urut terbaru dulu, tapi saldo berjalan tetap dihitung kronologis (lama->baru) di atas
+      const rows = filtered.slice().reverse().map(en=>{
+        const saldoAt = runningByEntry.get(en);
+        const isMasuk = en.jenis === 'masuk';
+        return `<tr>
+          <td>${fmtDateShort(en.tanggal)}</td>
+          <td>${en.keterangan}</td>
+          <td><span class="ledger-badge ${isMasuk?'masuk':'keluar'}">${isMasuk?'Kas Masuk':'Kas Keluar'}</span></td>
+          <td class="num ledger-num-pos">${isMasuk ? rupiah(en.jumlah) : '-'}</td>
+          <td class="num ledger-num-neg">${!isMasuk ? rupiah(en.jumlah) : '-'}</td>
+          <td class="num">${rupiah(saldoAt)}</td>
+        </tr>`;
+      });
+      tbody.innerHTML = `<tr class="ledger-saldo-row"><td colspan="5">Saldo Awal</td><td class="num">${rupiah(saldoAwal)}</td></tr>` + rows.join('');
+    }
+
+    const infoEl = document.getElementById('lgFilterInfo');
+    const isActive = !!(ledgerFilters.tanggalDari || ledgerFilters.tanggalSampai || ledgerFilters.keyword);
+    infoEl.textContent = isActive ? `Menampilkan ${filtered.length} dari ${allEntries.length} transaksi (filter aktif)` : '';
+  }
+  document.getElementById('lgFilterDari').addEventListener('input', (e)=>{ ledgerFilters.tanggalDari = e.target.value; renderPembukuan(); });
+  document.getElementById('lgFilterSampai').addEventListener('input', (e)=>{ ledgerFilters.tanggalSampai = e.target.value; renderPembukuan(); });
+  document.getElementById('lgFilterKeyword').addEventListener('input', (e)=>{ ledgerFilters.keyword = e.target.value.trim(); renderPembukuan(); });
+  document.getElementById('lgFilterResetBtn').addEventListener('click', ()=>{
+    ledgerFilters = { tanggalDari:'', tanggalSampai:'', keyword:'' };
+    document.getElementById('lgFilterDari').value = '';
+    document.getElementById('lgFilterSampai').value = '';
+    document.getElementById('lgFilterKeyword').value = '';
+    renderPembukuan();
   });
 
   function recalcExpenseTotal(){
@@ -1492,11 +1654,13 @@
     document.getElementById('kpiTotalPemesan').textContent = totalPemesan.toLocaleString('id-ID');
 
     const totalPengeluaran = computeTotalPengeluaran();
-    const arusKasBersih = grandTotal - totalPengeluaran;
+    const saldoAwal = state.config.saldoAwal || 0;
+    const saldoKasSaatIni = saldoAwal + grandTotal - totalPengeluaran;
+    document.getElementById('dashSaldoAwal').textContent = rupiah(saldoAwal);
     document.getElementById('dashPemasukan').textContent = rupiah(grandTotal);
     document.getElementById('dashPengeluaran').textContent = rupiah(totalPengeluaran);
-    document.getElementById('dashArusKas').textContent = rupiah(arusKasBersih);
-    document.getElementById('dashArusKas').style.color = arusKasBersih < 0 ? 'var(--red)' : 'var(--brass)';
+    document.getElementById('dashArusKas').textContent = rupiah(saldoKasSaatIni);
+    document.getElementById('dashArusKas').style.color = saldoKasSaatIni < 0 ? 'var(--red)' : 'var(--brass)';
 
     const target = state.config.targetBulanan || 0;
     const pct = target > 0 ? Math.min(100, (grandTotal/target)*100) : 0;
@@ -1538,6 +1702,7 @@
     renderOrders();
     renderItems();
     renderExpenses();
+    renderPembukuan();
     renderRekap();
     renderRekapTanggal();
     renderArsip();
@@ -1774,11 +1939,13 @@
     document.getElementById('cBatasStok').value = state.config.batasStok;
     document.getElementById('cCurrency').value = state.config.currency;
     document.getElementById('cDiscordWebhook').value = state.config.discordWebhook || '';
+    document.getElementById('cSaldoAwal').value = state.config.saldoAwal || 0;
   }
   document.getElementById('saveConfigBtn').addEventListener('click', async ()=>{
     state.config.targetBulanan = Number(document.getElementById('cTarget').value)||0;
     state.config.batasStok = Number(document.getElementById('cBatasStok').value)||0;
     state.config.currency = document.getElementById('cCurrency').value.trim() || 'Rp';
+    state.config.saldoAwal = Number(document.getElementById('cSaldoAwal').value)||0;
     await dbSaveConfig(state.config);
     renderAll();
     toast('Pengaturan disimpan.');
