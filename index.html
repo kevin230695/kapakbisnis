@@ -729,14 +729,14 @@
     </div>
 
     <div class="config-card" style="max-width:520px; margin-top:16px;">
-      <label>Webhook — Status Pesanan Berubah</label>
-      <input type="text" id="cWebhookStatus" placeholder="https://discord.com/api/webhooks/...">
+      <label>Webhook — Total Pemasukan (Pesanan Selesai)</label>
+      <input type="text" id="cWebhookSelesai" placeholder="https://discord.com/api/webhooks/...">
       <div class="stamp" style="margin-top:10px; color:var(--text-dim); text-transform:none; letter-spacing:normal; font-family:var(--body); font-size:12.5px;">
-        Terkirim setiap kali status pesanan diubah (DIPROSES / SELESAI / DIBATALKAN).
+        Terkirim setiap kali status pesanan diubah menjadi SELESAI, berisi rincian pesanan tersebut dan total pemasukan keseluruhan dari semua pesanan yang sudah selesai.
       </div>
       <div style="margin-top:14px; display:flex; gap:10px;">
-        <button class="btn" data-save-webhook="webhookStatus" data-input="cWebhookStatus">Simpan</button>
-        <button class="btn ghost" data-test-webhook="cWebhookStatus">Kirim Tes</button>
+        <button class="btn" data-save-webhook="webhookSelesai" data-input="cWebhookSelesai">Simpan</button>
+        <button class="btn ghost" data-test-webhook="cWebhookSelesai">Kirim Tes</button>
       </div>
     </div>
 
@@ -818,7 +818,7 @@
 (function(){
   "use strict";
 
-  let state = { items: [], orders: [], archives: [], expenses: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp', saldoAwal: 0, webhookPesanan: '', webhookStatus: '', webhookPengeluaran: '', webhookStok: '' } };
+  let state = { items: [], orders: [], archives: [], expenses: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp', saldoAwal: 0, webhookPesanan: '', webhookSelesai: '', webhookPengeluaran: '', webhookStok: '' } };
   let filters = { tanggalDari: '', tanggalSampai: '', pemesan: '', status: '', statusPesanan: '' };
   let ledgerFilters = { tanggalDari: '', tanggalSampai: '', keyword: '' };
 
@@ -926,13 +926,13 @@
         currency: map.mata_uang || 'Rp',
         saldoAwal: Number(map.saldo_awal ?? 0),
         webhookPesanan: map.discord_webhook_pesanan ?? legacyWebhook,
-        webhookStatus: map.discord_webhook_status ?? legacyWebhook,
+        webhookSelesai: map.discord_webhook_selesai ?? (map.discord_webhook_status ?? legacyWebhook),
         webhookPengeluaran: map.discord_webhook_pengeluaran ?? legacyWebhook,
         webhookStok: map.discord_webhook_stok ?? legacyWebhook
       };
       const newKeys = [
         ['discord_webhook_pesanan', state.config.webhookPesanan],
-        ['discord_webhook_status', state.config.webhookStatus],
+        ['discord_webhook_selesai', state.config.webhookSelesai],
         ['discord_webhook_pengeluaran', state.config.webhookPengeluaran],
         ['discord_webhook_stok', state.config.webhookStok]
       ];
@@ -948,7 +948,7 @@
         { key:'batas_stok', value:String(state.config.batasStok) },
         { key:'mata_uang', value:state.config.currency },
         { key:'discord_webhook_pesanan', value:'' },
-        { key:'discord_webhook_status', value:'' },
+        { key:'discord_webhook_selesai', value:'' },
         { key:'discord_webhook_pengeluaran', value:'' },
         { key:'discord_webhook_stok', value:'' },
         { key:'saldo_awal', value:'0' }
@@ -1014,7 +1014,7 @@
       sb.from('config').update({ value:String(cfg.batasStok) }).eq('key','batas_stok'),
       sb.from('config').update({ value:cfg.currency }).eq('key','mata_uang'),
       sb.from('config').upsert([{ key:'discord_webhook_pesanan', value:cfg.webhookPesanan || '' }], { onConflict:'key' }),
-      sb.from('config').upsert([{ key:'discord_webhook_status', value:cfg.webhookStatus || '' }], { onConflict:'key' }),
+      sb.from('config').upsert([{ key:'discord_webhook_selesai', value:cfg.webhookSelesai || '' }], { onConflict:'key' }),
       sb.from('config').upsert([{ key:'discord_webhook_pengeluaran', value:cfg.webhookPengeluaran || '' }], { onConflict:'key' }),
       sb.from('config').upsert([{ key:'discord_webhook_stok', value:cfg.webhookStok || '' }], { onConflict:'key' }),
       sb.from('config').upsert([{ key:'saldo_awal', value:String(cfg.saldoAwal||0) }], { onConflict:'key' }),
@@ -1030,7 +1030,7 @@
     await dbSaveConfig({
       targetBulanan:100000000, batasStok:20, currency:'Rp', saldoAwal: state.config.saldoAwal || 0,
       webhookPesanan: state.config.webhookPesanan || '',
-      webhookStatus: state.config.webhookStatus || '',
+      webhookSelesai: state.config.webhookSelesai || '',
       webhookPengeluaran: state.config.webhookPengeluaran || '',
       webhookStok: state.config.webhookStok || ''
     });
@@ -1070,6 +1070,10 @@
 
   // ---------- Derived helpers ----------
   function itemById(id){ return state.items.find(i=>i.id===id); }
+
+  function computeTotalPemasukanSelesai(){
+    return state.orders.reduce((sum, o) => (o.statusPesanan === 'SELESAI' ? sum + (o.total||0) : sum), 0);
+  }
   function itemByName(name){ return state.items.find(i=>i.nama===name); }
 
   function computeOrder(jenis, itemId, jumlah){
@@ -1967,7 +1971,7 @@
     order.statusPesanan = newStatus;
     await dbUpdateOrderStatusPesanan(id, newStatus);
     renderAll();
-    sendDiscordOrderStatusUpdate(order, oldStatus, newStatus);
+    if(newStatus === 'SELESAI') sendDiscordIncomeRecap(order);
     toast(newStatus === 'DIBATALKAN' ? 'Pesanan dibatalkan, stok dikembalikan.' : `Status pesanan diubah ke ${newStatus}.`);
   });
 
@@ -2039,7 +2043,7 @@
     document.getElementById('cCurrency').value = state.config.currency;
     document.getElementById('cSaldoAwal').value = state.config.saldoAwal || 0;
     document.getElementById('cWebhookPesanan').value = state.config.webhookPesanan || '';
-    document.getElementById('cWebhookStatus').value = state.config.webhookStatus || '';
+    document.getElementById('cWebhookSelesai').value = state.config.webhookSelesai || '';
     document.getElementById('cWebhookPengeluaran').value = state.config.webhookPengeluaran || '';
     document.getElementById('cWebhookStok').value = state.config.webhookStok || '';
   }
@@ -2106,26 +2110,26 @@
     });
   }
 
-  // Notifikasi perubahan status pesanan (SELESAI / DIBATALKAN / DIPROSES).
-  async function sendDiscordOrderStatusUpdate(order, oldStatus, newStatus){
-    const url = (state.config.webhookStatus||'').trim();
+  // Notifikasi pesanan yang baru menjadi SELESAI — rincian pesanan tersebut,
+  // ditambah total pemasukan keseluruhan dari semua pesanan yang sudah selesai.
+  async function sendDiscordIncomeRecap(order){
+    const url = (state.config.webhookSelesai||'').trim();
     if(!url) return;
     const item = itemById(order.itemId);
-    const colorMap = { SELESAI: DISCORD_COLOR_OK, DIBATALKAN: DISCORD_COLOR_WARN, DIPROSES: DISCORD_COLOR_INFO };
+    const totalPemasukan = computeTotalPemasukanSelesai();
     const fields = [
       { name: 'Pemesan', value: order.pemesan, inline: true },
       { name: 'Item', value: item ? item.nama : '(dihapus)', inline: true },
       { name: 'Jumlah', value: String(order.jumlah), inline: true },
-      { name: 'Total', value: rupiah(order.total), inline: true },
-      { name: 'Status Lama', value: oldStatus, inline: true },
-      { name: 'Status Baru', value: newStatus, inline: true }
+      { name: 'Pemasukan Pesanan Ini', value: rupiah(order.total), inline: true },
+      { name: 'Total Pemasukan (Semua Pesanan Selesai)', value: rupiah(totalPemasukan), inline: true }
     ];
     if(order.keterangan) fields.push({ name: 'Keterangan', value: order.keterangan.slice(0, 500) });
     await postDiscord(url, {
       username: 'KAPAK Order Bot',
       embeds: [{
-        title: `🔄 Status Pesanan Diperbarui — ${order.pemesan}`,
-        color: colorMap[newStatus] || DISCORD_COLOR_INFO,
+        title: `💰 Pesanan Selesai — ${order.pemesan}`,
+        color: DISCORD_COLOR_OK,
         fields,
         footer: { text: 'KAPAK — Buku Pesanan' },
         timestamp: new Date().toISOString()
@@ -2179,7 +2183,7 @@
   }
   const WEBHOOK_LABELS = {
     webhookPesanan: 'Pesanan Baru',
-    webhookStatus: 'Status Pesanan Berubah',
+    webhookSelesai: 'Total Pemasukan (Pesanan Selesai)',
     webhookPengeluaran: 'Pengeluaran / Restock',
     webhookStok: 'Peringatan Stok Menipis'
   };
