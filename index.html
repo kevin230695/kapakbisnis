@@ -712,15 +712,55 @@
     <div class="section-head" style="margin-top:32px;">
       <h2>Integrasi <em>Discord</em></h2>
     </div>
+    <div class="stamp" style="color:var(--text-dim); text-transform:none; letter-spacing:normal; font-family:var(--body); font-size:12.5px; margin-bottom:14px;">
+      Tiap jenis notifikasi bisa dikirim ke channel Discord yang berbeda. Isi salah satu, beberapa, atau semuanya — kosongkan untuk menonaktifkan jenis notifikasi tertentu.
+    </div>
+
     <div class="config-card" style="max-width:520px;">
-      <label>Discord Webhook URL</label>
-      <input type="text" id="cDiscordWebhook" placeholder="https://discord.com/api/webhooks/...">
+      <label>Webhook — Pesanan Baru</label>
+      <input type="text" id="cWebhookPesanan" placeholder="https://discord.com/api/webhooks/...">
       <div class="stamp" style="margin-top:10px; color:var(--text-dim); text-transform:none; letter-spacing:normal; font-family:var(--body); font-size:12.5px;">
-        Kalau diisi, rincian tiap pesanan yang disimpan di Buku Pesanan akan otomatis dikirim ke channel Discord ini. Kosongkan untuk menonaktifkan.
+        Terkirim setiap kali pesanan baru disimpan di Buku Pesanan.
       </div>
       <div style="margin-top:14px; display:flex; gap:10px;">
-        <button class="btn" id="saveDiscordBtn">Simpan Webhook</button>
-        <button class="btn ghost" id="testDiscordBtn">Kirim Tes</button>
+        <button class="btn" data-save-webhook="webhookPesanan" data-input="cWebhookPesanan">Simpan</button>
+        <button class="btn ghost" data-test-webhook="cWebhookPesanan">Kirim Tes</button>
+      </div>
+    </div>
+
+    <div class="config-card" style="max-width:520px; margin-top:16px;">
+      <label>Webhook — Status Pesanan Berubah</label>
+      <input type="text" id="cWebhookStatus" placeholder="https://discord.com/api/webhooks/...">
+      <div class="stamp" style="margin-top:10px; color:var(--text-dim); text-transform:none; letter-spacing:normal; font-family:var(--body); font-size:12.5px;">
+        Terkirim setiap kali status pesanan diubah (DIPROSES / SELESAI / DIBATALKAN).
+      </div>
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button class="btn" data-save-webhook="webhookStatus" data-input="cWebhookStatus">Simpan</button>
+        <button class="btn ghost" data-test-webhook="cWebhookStatus">Kirim Tes</button>
+      </div>
+    </div>
+
+    <div class="config-card" style="max-width:520px; margin-top:16px;">
+      <label>Webhook — Pengeluaran / Restock</label>
+      <input type="text" id="cWebhookPengeluaran" placeholder="https://discord.com/api/webhooks/...">
+      <div class="stamp" style="margin-top:10px; color:var(--text-dim); text-transform:none; letter-spacing:normal; font-family:var(--body); font-size:12.5px;">
+        Terkirim setiap kali ada pengeluaran / restock baru dicatat.
+      </div>
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button class="btn" data-save-webhook="webhookPengeluaran" data-input="cWebhookPengeluaran">Simpan</button>
+        <button class="btn ghost" data-test-webhook="cWebhookPengeluaran">Kirim Tes</button>
+      </div>
+    </div>
+
+    <div class="config-card" style="max-width:520px; margin-top:16px;">
+      <label>Webhook — Peringatan Stok Menipis</label>
+      <input type="text" id="cWebhookStok" placeholder="https://discord.com/api/webhooks/...">
+      <div class="stamp" style="margin-top:10px; color:var(--text-dim); text-transform:none; letter-spacing:normal; font-family:var(--body); font-size:12.5px;">
+        Terkirim otomatis setelah pesanan membuat stok item turun ke batas atau di bawahnya.
+      </div>
+      <div style="margin-top:14px; display:flex; gap:10px;">
+        <button class="btn" data-save-webhook="webhookStok" data-input="cWebhookStok">Simpan</button>
+        <button class="btn ghost" data-test-webhook="cWebhookStok">Kirim Tes</button>
       </div>
     </div>
   </section>
@@ -778,7 +818,7 @@
 (function(){
   "use strict";
 
-  let state = { items: [], orders: [], archives: [], expenses: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp', discordWebhook: '', saldoAwal: 0 } };
+  let state = { items: [], orders: [], archives: [], expenses: [], config: { targetBulanan: 100000000, batasStok: 20, currency: 'Rp', saldoAwal: 0, webhookPesanan: '', webhookStatus: '', webhookPengeluaran: '', webhookStok: '' } };
   let filters = { tanggalDari: '', tanggalSampai: '', pemesan: '', status: '', statusPesanan: '' };
   let ledgerFilters = { tanggalDari: '', tanggalSampai: '', keyword: '' };
 
@@ -879,15 +919,25 @@
     if(e3) throw e3;
     if(cfgRows && cfgRows.length){
       const map = {}; cfgRows.forEach(r=>map[r.key]=r.value);
+      const legacyWebhook = map.discord_webhook_url || '';
       state.config = {
         targetBulanan: Number(map.target_bulanan ?? 100000000),
         batasStok: Number(map.batas_stok ?? 20),
         currency: map.mata_uang || 'Rp',
-        discordWebhook: map.discord_webhook_url || '',
-        saldoAwal: Number(map.saldo_awal ?? 0)
+        saldoAwal: Number(map.saldo_awal ?? 0),
+        webhookPesanan: map.discord_webhook_pesanan ?? legacyWebhook,
+        webhookStatus: map.discord_webhook_status ?? legacyWebhook,
+        webhookPengeluaran: map.discord_webhook_pengeluaran ?? legacyWebhook,
+        webhookStok: map.discord_webhook_stok ?? legacyWebhook
       };
-      if(!('discord_webhook_url' in map)){
-        await sb.from('config').insert([{ key:'discord_webhook_url', value:'' }]);
+      const newKeys = [
+        ['discord_webhook_pesanan', state.config.webhookPesanan],
+        ['discord_webhook_status', state.config.webhookStatus],
+        ['discord_webhook_pengeluaran', state.config.webhookPengeluaran],
+        ['discord_webhook_stok', state.config.webhookStok]
+      ];
+      for(const [key, value] of newKeys){
+        if(!(key in map)) await sb.from('config').insert([{ key, value }]);
       }
       if(!('saldo_awal' in map)){
         await sb.from('config').insert([{ key:'saldo_awal', value:'0' }]);
@@ -897,7 +947,10 @@
         { key:'target_bulanan', value:String(state.config.targetBulanan) },
         { key:'batas_stok', value:String(state.config.batasStok) },
         { key:'mata_uang', value:state.config.currency },
-        { key:'discord_webhook_url', value:'' },
+        { key:'discord_webhook_pesanan', value:'' },
+        { key:'discord_webhook_status', value:'' },
+        { key:'discord_webhook_pengeluaran', value:'' },
+        { key:'discord_webhook_stok', value:'' },
         { key:'saldo_awal', value:'0' }
       ]);
     }
@@ -960,7 +1013,10 @@
       sb.from('config').update({ value:String(cfg.targetBulanan) }).eq('key','target_bulanan'),
       sb.from('config').update({ value:String(cfg.batasStok) }).eq('key','batas_stok'),
       sb.from('config').update({ value:cfg.currency }).eq('key','mata_uang'),
-      sb.from('config').upsert([{ key:'discord_webhook_url', value:cfg.discordWebhook || '' }], { onConflict:'key' }),
+      sb.from('config').upsert([{ key:'discord_webhook_pesanan', value:cfg.webhookPesanan || '' }], { onConflict:'key' }),
+      sb.from('config').upsert([{ key:'discord_webhook_status', value:cfg.webhookStatus || '' }], { onConflict:'key' }),
+      sb.from('config').upsert([{ key:'discord_webhook_pengeluaran', value:cfg.webhookPengeluaran || '' }], { onConflict:'key' }),
+      sb.from('config').upsert([{ key:'discord_webhook_stok', value:cfg.webhookStok || '' }], { onConflict:'key' }),
       sb.from('config').upsert([{ key:'saldo_awal', value:String(cfg.saldoAwal||0) }], { onConflict:'key' }),
     ]);
   }
@@ -971,7 +1027,13 @@
     await sb.from('items').delete().neq('id','__none__');
     const seed = DEFAULT_ITEMS.map(i=>({ id:i.id, nama:i.nama, kategori:i.kategori, harga_a:i.hargaA, max_a:i.maxA, harga_n:i.hargaN, max_n:i.maxN, stok:i.stok }));
     await sb.from('items').insert(seed);
-    await dbSaveConfig({ targetBulanan:100000000, batasStok:20, currency:'Rp', discordWebhook: state.config.discordWebhook || '', saldoAwal: state.config.saldoAwal || 0 });
+    await dbSaveConfig({
+      targetBulanan:100000000, batasStok:20, currency:'Rp', saldoAwal: state.config.saldoAwal || 0,
+      webhookPesanan: state.config.webhookPesanan || '',
+      webhookStatus: state.config.webhookStatus || '',
+      webhookPengeluaran: state.config.webhookPengeluaran || '',
+      webhookStok: state.config.webhookStok || ''
+    });
   }
 
   function subscribeRealtime(){
@@ -1975,8 +2037,11 @@
     document.getElementById('cTarget').value = state.config.targetBulanan;
     document.getElementById('cBatasStok').value = state.config.batasStok;
     document.getElementById('cCurrency').value = state.config.currency;
-    document.getElementById('cDiscordWebhook').value = state.config.discordWebhook || '';
     document.getElementById('cSaldoAwal').value = state.config.saldoAwal || 0;
+    document.getElementById('cWebhookPesanan').value = state.config.webhookPesanan || '';
+    document.getElementById('cWebhookStatus').value = state.config.webhookStatus || '';
+    document.getElementById('cWebhookPengeluaran').value = state.config.webhookPengeluaran || '';
+    document.getElementById('cWebhookStok').value = state.config.webhookStok || '';
   }
   document.getElementById('saveConfigBtn').addEventListener('click', async ()=>{
     state.config.targetBulanan = Number(document.getElementById('cTarget').value)||0;
@@ -2001,9 +2066,8 @@
   const DISCORD_COLOR_INFO = 3447003;    // biru
   const DISCORD_COLOR_STOK = 15105570;   // oranye
 
-  async function postDiscord(payload){
-    const url = (state.config.discordWebhook||'').trim();
-    if(!url) return;
+  async function postDiscord(url, payload){
+    if(!(url||'').trim()) return;
     try{
       await fetch(url, {
         method: 'POST',
@@ -2018,7 +2082,8 @@
   // Notifikasi pesanan baru — rincian lengkap: nomor pesanan, pemesan, tanggal,
   // jenis, jumlah jenis item, rincian per item, keterangan manual, dan status batas.
   async function sendDiscordOrderRecap({ orderBatchNo, pemesan, tanggal, jenis, itemLines, itemCount, totalBelanja, keterangan, anyExceeded }){
-    if(!(state.config.discordWebhook||'').trim()) return;
+    const url = (state.config.webhookPesanan||'').trim();
+    if(!url) return;
     const fields = [
       { name: 'No. Pesanan', value: orderBatchNo, inline: true },
       { name: 'Tanggal', value: fmtDateShort(tanggal), inline: true },
@@ -2029,7 +2094,7 @@
       { name: 'Rincian Item', value: itemLines.join('\n').slice(0, 1000) || '-' }
     ];
     if(keterangan) fields.push({ name: 'Keterangan', value: keterangan.slice(0, 500) });
-    await postDiscord({
+    await postDiscord(url, {
       username: 'KAPAK Order Bot',
       embeds: [{
         title: `🧾 Pesanan Baru — ${pemesan}`,
@@ -2043,7 +2108,8 @@
 
   // Notifikasi perubahan status pesanan (SELESAI / DIBATALKAN / DIPROSES).
   async function sendDiscordOrderStatusUpdate(order, oldStatus, newStatus){
-    if(!(state.config.discordWebhook||'').trim()) return;
+    const url = (state.config.webhookStatus||'').trim();
+    if(!url) return;
     const item = itemById(order.itemId);
     const colorMap = { SELESAI: DISCORD_COLOR_OK, DIBATALKAN: DISCORD_COLOR_WARN, DIPROSES: DISCORD_COLOR_INFO };
     const fields = [
@@ -2055,7 +2121,7 @@
       { name: 'Status Baru', value: newStatus, inline: true }
     ];
     if(order.keterangan) fields.push({ name: 'Keterangan', value: order.keterangan.slice(0, 500) });
-    await postDiscord({
+    await postDiscord(url, {
       username: 'KAPAK Order Bot',
       embeds: [{
         title: `🔄 Status Pesanan Diperbarui — ${order.pemesan}`,
@@ -2069,7 +2135,8 @@
 
   // Notifikasi pengeluaran / restock baru — detail item, jumlah, harga satuan, total, dan keterangan.
   async function sendDiscordExpenseRecap(expense){
-    if(!(state.config.discordWebhook||'').trim()) return;
+    const url = (state.config.webhookPengeluaran||'').trim();
+    if(!url) return;
     const fields = [
       { name: 'Tanggal', value: fmtDateShort(expense.tanggal), inline: true },
       { name: 'Item', value: expense.itemNama || '-', inline: true },
@@ -2078,7 +2145,7 @@
       { name: 'Total', value: rupiah(expense.total), inline: true }
     ];
     if(expense.keterangan) fields.push({ name: 'Keterangan', value: expense.keterangan.slice(0, 500) });
-    await postDiscord({
+    await postDiscord(url, {
       username: 'KAPAK Order Bot',
       embeds: [{
         title: `💸 Pengeluaran Baru`,
@@ -2092,11 +2159,12 @@
 
   // Notifikasi peringatan stok menipis/habis, dikirim setelah stok item berkurang akibat pesanan.
   async function sendDiscordLowStockAlert(items){
-    if(!(state.config.discordWebhook||'').trim()) return;
+    const url = (state.config.webhookStok||'').trim();
+    if(!url) return;
     const lines = items.map(i=> i.stok <= 0
       ? `• ${i.nama} — HABIS (stok 0)`
       : `• ${i.nama} — menipis (stok ${i.stok}, batas ${state.config.batasStok})`);
-    await postDiscord({
+    await postDiscord(url, {
       username: 'KAPAK Order Bot',
       embeds: [{
         title: `⚠️ Peringatan Stok Menipis`,
@@ -2109,25 +2177,38 @@
       }]
     });
   }
-  document.getElementById('saveDiscordBtn').addEventListener('click', async ()=>{
-    state.config.discordWebhook = document.getElementById('cDiscordWebhook').value.trim();
-    await dbSaveConfig(state.config);
-    toast('Webhook Discord disimpan.');
+  const WEBHOOK_LABELS = {
+    webhookPesanan: 'Pesanan Baru',
+    webhookStatus: 'Status Pesanan Berubah',
+    webhookPengeluaran: 'Pengeluaran / Restock',
+    webhookStok: 'Peringatan Stok Menipis'
+  };
+  document.querySelectorAll('[data-save-webhook]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const key = btn.dataset.saveWebhook;
+      const inputId = btn.dataset.input;
+      state.config[key] = document.getElementById(inputId).value.trim();
+      await dbSaveConfig(state.config);
+      toast(`Webhook ${WEBHOOK_LABELS[key]} disimpan.`);
+    });
   });
-  document.getElementById('testDiscordBtn').addEventListener('click', async ()=>{
-    const url = document.getElementById('cDiscordWebhook').value.trim();
-    if(!url){ toast('Isi dulu Discord Webhook URL-nya.'); return; }
-    try{
-      await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username:'KAPAK Order Bot', content:'✅ Tes koneksi webhook dari KAPAK berhasil.' })
-      });
-      toast('Tes terkirim — cek channel Discord kamu.');
-    }catch(err){
-      console.error(err);
-      toast('Gagal mengirim tes. Periksa URL webhook.');
-    }
+  document.querySelectorAll('[data-test-webhook]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const inputId = btn.dataset.testWebhook;
+      const url = document.getElementById(inputId).value.trim();
+      if(!url){ toast('Isi dulu URL webhook-nya.'); return; }
+      try{
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username:'KAPAK Order Bot', content:'✅ Tes koneksi webhook dari KAPAK berhasil.' })
+        });
+        toast('Tes terkirim — cek channel Discord kamu.');
+      }catch(err){
+        console.error(err);
+        toast('Gagal mengirim tes. Periksa URL webhook.');
+      }
+    });
   });
 
   // ---------- Setup / Init ----------
